@@ -23,16 +23,30 @@
 
                         <form method="POST" action="{{ route('admin.login') }}">
                             @csrf
+                            @if (session()->has('error'))
+                                <div class="alert alert-danger">
+                                    {{ session()->get('error') }}
+                                </div>
+                            @endif
                             <div class="mb-3">
                                 <label for="exampleInputEmail1" class="form-label fw-semibold">Email Address</label>
-                                <input type="email" class="form-control form-control-lg" id="exampleInputEmail1"
-                                    placeholder="admin@example.com" autofocus>
+                                <input type="email"
+                                    class="form-control form-control-lg @error('email') is-invalid @enderror"
+                                    name="email" id="exampleInputEmail1" placeholder="admin@example.com" autofocus
+                                    value="{{ old('email') }}">
+                                @error('email')
+                                    <span class="text-danger">{{ $message }}</span>
+                                @enderror
                             </div>
 
                             <div class="mb-4">
                                 <label for="exampleInputPassword1" class="form-label fw-semibold">Password</label>
-                                <input type="password" class="form-control form-control-lg" id="exampleInputPassword1"
-                                    placeholder="Enter your password">
+                                <input type="password"
+                                    class="form-control form-control-lg @error('password') is-invalid @enderror"
+                                    name="password" id="exampleInputPassword1" placeholder="Enter your password">
+                                @error('password')
+                                    <span class="text-danger">{{ $message }}</span>
+                                @enderror
                             </div>
 
                             <div class="d-grid mb-3">

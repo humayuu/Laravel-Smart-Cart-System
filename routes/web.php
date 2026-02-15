@@ -1,7 +1,10 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Middleware\AdminCheck;
+use App\Http\Middleware\LoggedInAdmin;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -21,10 +24,14 @@ Route::middleware('auth')->group(function () {
 // Admin All Routes
 Route::prefix('admin')->group(function () {
     Route::controller(AdminController::class)->group(function () {
-        Route::get('login', 'LoginPage');
+        Route::get('login', 'LoginPage')->name('admin.login.page')->middleware(LoggedInAdmin::class);
+        Route::get('dashboard', 'AdminDashboard')->name('admin.dashboard')->middleware(AdminCheck::class);
         Route::post('login/success', 'AdminLogin')->name('admin.login');
+        Route::post('logout', 'AdminLogout')->name('admin.logout');
 
     });
+
+    Route::resource('product', ProductController::class)->middleware(AdminCheck::class);
 });
 
 require __DIR__.'/auth.php';
