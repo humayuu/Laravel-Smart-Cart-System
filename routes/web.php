@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\CartController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Middleware\AdminCheck;
@@ -32,6 +33,14 @@ Route::prefix('admin')->group(function () {
     });
 
     Route::resource('product', ProductController::class)->middleware(AdminCheck::class);
+});
+
+Route::controller(CartController::class)->group(function () {
+    Route::post('cart/add/{id}', 'CartAdd')->name('cart.add');
+
+    Route::get('cart/product', 'CartProducts')->name('cart.product');
+
+    Route::delete('/cart/remove/{id}', 'CartRemove')->name('cart.remove');
 });
 
 require __DIR__.'/auth.php';
