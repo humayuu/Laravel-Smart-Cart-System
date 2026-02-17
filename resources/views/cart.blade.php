@@ -10,6 +10,7 @@
         integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
 <body class="bg-light">
@@ -74,7 +75,6 @@
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th scope="col" class="ps-4">#</th>
                                     <th scope="col">Product</th>
                                     <th scope="col">Price</th>
                                     <th scope="col" style="width: 150px;">Quantity</th>
@@ -86,11 +86,9 @@
                                 @foreach ($carts as $key => $cart)
                                     @php
                                         $subtotal = $cart['price'] * $cart['quantity'];
-                                        // $total += $subtotal;
-                                        $total = $total + $subtotal;
+                                        $total += $subtotal;
                                     @endphp
-                                    <tr id="cart-item-{{ $key }}">
-                                        <td class="ps-4">{{ $loop->iteration }}</td>
+                                    <tr id="row-{{ $key }}">
                                         <td>
                                             <div class="d-flex align-items-center">
                                                 <img src="{{ asset('images/' . $cart['image']) }}" class="rounded me-3"
@@ -120,8 +118,8 @@
                                                 class="fw-bold text-primary">${{ number_format($subtotal, 2) }}</span>
                                         </td>
                                         <td class="text-center">
-                                            <button class="btn btn-outline-danger btn-sm"
-                                                onclick="removeCart('{{ $key }}')" type="button">
+                                            <button onclick="removeCart('{{ $key }}')"
+                                                class="btn btn-outline-danger btn-sm" type="submit">
                                                 <i class="fa fa-trash"></i>
                                             </button>
                                         </td>
@@ -134,7 +132,7 @@
             </div>
 
             <!-- Cart Summary -->
-            <div class="row mt-4">
+            <div id="total" class="row mt-4">
                 <div class="col-lg-4 ms-auto">
                     <div class="card shadow-sm border-0">
                         <div class="card-body">
@@ -200,100 +198,53 @@
     </script>
 
     <script type="text/javascript">
+        let divEl = document.getElementById('total');
         const removeCart = async (id) => {
-            if (!confirm('Remove this item from cart?')) {
-                return;
-            }
+            Swal.fire({
+                title: "Are you sure?",
+                text: "You won't be able to revert this!",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Yes, delete it!"
+            }).then(async (result) => {
+                if (result.isConfirmed) {
 
-            try {
-                const response = await fetch(`/cart/remove/${id}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    try {
+                        const response = await fetch(`/cart/remove/${id}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector(
+                                    'meta[name="csrf-token"]').getAttribute('content'),
+                                'Accept': 'application/json'
+                            }
+                        });
+
+                        const data = await response.json();
+
+                        // Remove the row from DOM
+                        document.getElementById(`row-${id}`).remove();
+
+
+                        // Show success message
+                        Swal.fire({
+                            title: "Deleted!",
+                            text: data.message ?? "Item removed from cart.",
+                            icon: "success"
+                        });
+
+                    } catch (error) {
+                        console.log(error);
+                        Swal.fire({
+                            title: "Error!",
+                            text: "Something went wrong.",
+                            icon: "error"
+                        });
                     }
-                });
 
-                const data = await response.json();
-
-                if (response.ok) {
-                    // Remove the row from table
-                    const row = document.getElementById(`cart-item-${id}`);
-                    row.remove();
-
-                    // Update cart count and total
-                    updateCartSummary();
-
-                    // Show success message
-                    showAlert('success', data.message);
-
-                    // Check if cart is empty
-                    checkEmptyCart();
-                } else {
-                    showAlert('danger', 'Error: ' + data.message);
                 }
-            } catch (error) {
-                console.error('Error:', error);
-                showAlert('danger', 'Failed to remove item');
-            }
-        }
-
-        function updateCartSummary() {
-            const remainingRows = document.querySelectorAll('tbody tr').length;
-
-            // Update item count
-            document.querySelector('.card-body span.fw-semibold').textContent = remainingRows;
-
-            // Recalculate total
-            let newTotal = 0;
-            document.querySelectorAll('tbody tr').forEach(row => {
-                const subtotalText = row.querySelector('.fw-bold.text-primary').textContent;
-                const subtotal = parseFloat(subtotalText.replace('$', '').replace(',', ''));
-                newTotal += subtotal;
             });
-
-            // Update total display
-            document.querySelector('.h4.text-primary.fw-bold').textContent = '$' + newTotal.toFixed(2);
-        }
-
-        function checkEmptyCart() {
-            const remainingRows = document.querySelectorAll('tbody tr').length;
-
-            if (remainingRows === 0) {
-                // Show empty cart message
-                document.querySelector('.container.py-4').innerHTML = `
-                <div class="text-center py-5">
-                    <div class="mb-4">
-                        <i class="fas fa-shopping-cart text-muted" style="font-size: 80px;"></i>
-                    </div>
-                    <h4 class="text-muted mb-3">Your cart is empty</h4>
-                    <p class="text-muted mb-4">Add some products to your cart to see them here.</p>
-                    <a href="{{ url('/dashboard') }}" class="btn btn-primary">
-                        <i class="fas fa-shopping-bag me-2"></i>Start Shopping
-                    </a>
-                </div>
-            `;
-            }
-        }
-
-        function showAlert(type, message) {
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
-            alertDiv.role = 'alert';
-            alertDiv.innerHTML = `
-            <i class="fas fa-check-circle me-2"></i>${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        `;
-
-            document.querySelector('.container.py-4').insertBefore(
-                alertDiv,
-                document.querySelector('.row.mb-4').nextSibling
-            );
-
-            // Auto remove after 3 seconds
-            setTimeout(() => {
-                alertDiv.remove();
-            }, 3000);
         }
     </script>
 </body>

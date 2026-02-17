@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class CartController extends Controller
 {
@@ -46,23 +48,30 @@ class CartController extends Controller
     /**
      * For Remove Cart
      */
-    public function CartRemove($id)
+    public function CartRemove(Request $request, $id)
     {
-        $cart = session()->get('cart', []);
+        try {
+            $cart = session()->get('cart', []);
 
-        if (isset($cart[$id])) {
+            if (! isset($cart[$id])) {
+                return response()->json([
+                    'message' => 'Item not found in cart.',
+                ], 404);
+            }
+
             unset($cart[$id]);
             session()->put('cart', $cart);
 
             return response()->json([
-                'success' => true,
-                'message' => 'Item removed from cart successfully',
-            ]);
-        }
+                'message' => 'Item removed from cart.',
+            ], 200);
 
-        return response()->json([
-            'success' => false,
-            'message' => 'Item not found',
-        ], 404);
+        } catch (Exception $e) {
+            Log::error('CartRemove error: '.$e->getMessage());
+
+            return response()->json([
+                'message' => 'Something went wrong.',
+            ], 500);
+        }
     }
 }
