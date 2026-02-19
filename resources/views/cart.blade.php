@@ -69,7 +69,7 @@
         @endphp
 
         @if (count($carts) > 0)
-            <div class="card shadow-sm border-0">
+            <div class="card shadow-sm border-0" id="cart-section">
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
@@ -88,7 +88,7 @@
                                         $subtotal = $cart['price'] * $cart['quantity'];
                                         $total += $subtotal;
                                     @endphp
-                                    <tr id="row-{{ $key }}">
+                                    <tr id="row-{{ $key }}" data-subtotal="{{ $subtotal }}">
                                         <td>
                                             <div class="d-flex align-items-center">
                                                 <img src="{{ asset('images/' . $cart['image']) }}" class="rounded me-3"
@@ -103,15 +103,12 @@
                                             <span class="fw-semibold">${{ number_format($cart['price'], 2) }}</span>
                                         </td>
                                         <td>
-                                            <form method="POST" action="#" class="d-inline">
-                                                @csrf
-                                                @method('PATCH')
-                                                <div class="input-group input-group-sm" style="max-width: 120px;">
-                                                    <input type="number" name="quantity"
-                                                        value="{{ $cart['quantity'] }}"
-                                                        class="form-control text-center" min="1" max="99">
-                                                </div>
-                                            </form>
+                                            <div class="input-group input-group-sm" style="max-width: 120px;">
+                                                <input type="number" name="quantity"
+                                                    onchange="ChangeQty('{{ $key }}')"
+                                                    class="form-control text-center" min="1" max="99"
+                                                    value="{{ $cart['quantity'] }}">
+                                            </div>
                                         </td>
                                         <td>
                                             <span
@@ -139,12 +136,13 @@
                             <h5 class="card-title mb-3">Cart Summary</h5>
                             <div class="d-flex justify-content-between mb-2">
                                 <span class="text-muted">Items:</span>
-                                <span class="fw-semibold">{{ count($carts) }}</span>
+                                <span class="fw-semibold" id="cart-count">{{ count($carts) }}</span>
                             </div>
                             <hr>
                             <div class="d-flex justify-content-between mb-3">
                                 <span class="h5 mb-0">Total:</span>
-                                <span class="h4 mb-0 text-primary fw-bold">${{ number_format($total, 2) }}</span>
+                                <span class="h4 mb-0 text-primary fw-bold"
+                                    id="cart-total">${{ number_format($total, 2) }}</span>
                             </div>
                             <div class="d-grid gap-2">
                                 <button class="btn btn-primary btn-lg">
@@ -226,6 +224,9 @@
                         // Remove the row from DOM
                         document.getElementById(`row-${id}`).remove();
 
+                        // ReCalculate Total and Item number
+                        updateCartSummary();
+
 
                         // Show success message
                         Swal.fire({
@@ -245,6 +246,72 @@
 
                 }
             });
+        }
+        const updateCartSummary = () => {
+            const rows = document.querySelectorAll('tbody tr');
+            let total = 0;
+
+            rows.forEach(row => {
+                total += parseFloat(row.dataset.subtotal);
+            });
+
+            // Update total price
+            document.getElementById('cart-total').textContent = `$${total.toFixed(2)}`;
+
+            // Update item count
+            document.getElementById('cart-count').textContent = rows.length;
+
+            // If cart is empty, hide the cart section and show empty message
+            if (rows.length === 0) {
+                document.getElementById('cart-section').innerHTML = `
+            <div class="text-center py-5">
+                <div class="mb-4">
+                    <i class="fas fa-shopping-cart text-muted" style="font-size: 80px;"></i>
+                </div>
+                <h4 class="text-muted mb-3">Your cart is empty</h4>
+                <p class="text-muted mb-4">Add some products to your cart to see them here.</p>
+                <a href="{{ url('/dashboard') }}" class="btn btn-primary">
+                    <i class="fas fa-shopping-bag me-2"></i>Start Shopping
+                </a>
+            </div>
+        `;
+            }
+        }
+        const ChangeQty = async (id) => {
+            const input = document.querySelector(`#row-${id} input[name="quantity"]`);
+            const quantity = input.value;
+
+            try {
+                const response = await fetch(`/cart/quantity/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
+                            'content'),
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        quantity: quantity
+                    })
+                });
+
+                const data = await response.json();
+
+                // Update the row's data-subtotal so updateCartSummary() calculates correctly
+                const price = parseFloat(document.querySelector(`#row-${id} .fw-semibold`).textContent.replace('$',
+                    ''));
+                document.getElementById(`row-${id}`).dataset.subtotal = price * quantity;
+
+                // Update the subtotal display in the row
+                document.querySelector(`#row-${id} .fw-bold.text-primary`).textContent =
+                    `$${(price * quantity).toFixed(2)}`;
+
+                // Recalculate cart summary
+                updateCartSummary();
+
+            } catch (error) {
+                console.log(error);
+            }
         }
     </script>
 </body>

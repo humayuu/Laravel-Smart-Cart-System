@@ -74,4 +74,43 @@ class CartController extends Controller
             ], 500);
         }
     }
+
+    public function CartQuantity(Request $request, $id)
+    {
+        try {
+            $cart = session()->get('cart', []);
+
+            if (! isset($cart[$id])) {
+                return response()->json([
+                    'message' => 'Item not found in cart.',
+                    'status' => false,
+                ], 404);
+            }
+
+            // Update quantity
+            $cart[$id]['quantity'] = $request->quantity;
+            session()->put('cart', $cart);
+
+            // Calculate new subtotal for this item
+            $subtotal = $cart[$id]['price'] * $cart[$id]['quantity'];
+
+            // Calculate new overall total
+            $total = collect($cart)->sum(fn ($item) => $item['price'] * $item['quantity']);
+
+            return response()->json([
+                'message' => 'Successfully Updated Cart Quantity',
+                'status' => true,
+                'subtotal' => number_format($subtotal, 2),
+                'total' => number_format($total, 2),
+            ], 200);
+
+        } catch (Exception $e) {
+            Log::error('Error in update cart quantity '.$e->getMessage());
+
+            return response()->json([
+                'message' => 'Error in update cart quantity',
+                'status' => false,
+            ], 500);
+        }
+    }
 }

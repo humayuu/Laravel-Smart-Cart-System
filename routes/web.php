@@ -40,7 +40,8 @@ Route::controller(CartController::class)->group(function () {
 
     Route::get('cart/product', 'CartProducts')->name('cart.product');
 
-    Route::delete('/cart/remove/{id}', 'CartRemove')->name('cart.remove');
+    Route::delete('/cart/remove/{id}', 'CartRemove');
+    Route::put('/cart/quantity/{id}', 'CartQuantity');
 });
 
 require __DIR__.'/auth.php';
